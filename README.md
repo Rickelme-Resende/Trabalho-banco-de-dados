@@ -224,3 +224,10 @@ Os dados dos clientes ficam armazenados em `Cliente`, e os números de telefone 
 Os produtos são cadastrados em `Produto`, com a referência ao funcionário responsável por seu registro. Quando um cliente realiza uma compra, a tabela `Compra` guarda a identificação do cliente, a data e o valor total. Cada produto adquirido é representado em `Item_Compra`, juntamente com sua quantidade e o preço unitário cobrado naquele momento.
 
 Dessa forma, a estrutura relacional permite identificar clientes, funcionários e produtos, relacionar várias compras aos mesmos clientes, registrar diferentes produtos em uma compra e preservar os valores históricos das vendas, sem substituir os preços já registrados pelos preços atuais do catálogo.
+
+
+### 3.4. Diagrama Completo
+
+![Diagrama Completo](Diagramas/Diagrama_completo.png)
+
+[Visualizar o Diagrama completo em tamanho original](Diagramas/Diagrama_completo.png)
