@@ -3,7 +3,7 @@
 
 **Projeto:** Sistema de gerenciamento de um e-commerce de produtos eletrônicos  
 
-Este documento descreve o cenário de negócio e o desenvolvimento de um banco de dados relacional para um e-commerce de eletrônicos, abrangendo a modelagem conceitual, lógica e física, a inserção de dados fictícios e a demonstração de operações CRUD. O projeto contempla clientes, contas, funcionários, produtos e compras, com atenção à integridade referencial e à preservação do histórico das vendas.
+Este documento descreve o cenário de negócio e o desenvolvimento de um banco de dados relacional para um e-commerce de eletrônicos, abrangendo a modelagem conceitual, lógica e física, a inserção de dados fictícios, a demonstração de operações CRUD e a elaboração de relatórios gerenciais. O projeto contempla clientes, contas, funcionários, produtos e compras, com atenção à integridade referencial e à preservação do histórico das vendas.
 
 ## 1. Cenário
 
@@ -348,3 +348,269 @@ A operação `DELETE` remove somente o cliente de demonstração, identificando-
 As operações CRUD exemplificam as instruções SQL utilizadas para inserir, consultar, atualizar e excluir registros. A demonstração foi realizada sobre a entidade `Cliente`, uma das entidades centrais do sistema, e ilustra o uso de filtros e restrições para evitar alterações indevidas.
 
 [Consultar todas as capturas de tela do CRUD](Crud/)
+
+
+## 7. Relatórios
+
+### 7.1. Objetivo das consultas
+
+Foram elaboradas dez consultas SQL para extrair informações relevantes sobre o funcionamento do e-commerce, com foco em clientes, faturamento, vendas, estoque, funcionários e histórico de preços. As consultas estão reunidas no arquivo **[`sql/05_relatorios.sql`](sql/05_relatorios.sql)** e foram desenvolvidas para execução no SQL Editor do Supabase.
+
+Todas utilizam `SELECT`, `WHERE`, `ORDER BY` e pelo menos um `JOIN`, conforme os requisitos do trabalho. De acordo com a finalidade de cada relatório, também são aplicados recursos como `GROUP BY`, `HAVING`, `SUM`, `COUNT`, `DATE_TRUNC`, `STRING_AGG`, `COALESCE` e `LIMIT`. As operações são exclusivamente de leitura, sem alterações nos registros.
+
+### 7.2. Consultas SQL e evidências
+
+#### 7.2.1. Relatório 01 — Clientes que mais gastaram
+
+Identificar os dez clientes com maior valor acumulado em compras registradas a partir de 1º de janeiro de 2025. A consulta relaciona `cliente` e `compra`, contabiliza pedidos por cliente e soma seus valores. A ordenação destaca os maiores totais gastos.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    cl.id_cliente,
+    cl.nome AS cliente,
+    COUNT(c.id_compra) AS total_compras,
+    SUM(c.valor_total)::NUMERIC(12,2) AS total_gasto
+FROM public.cliente AS cl
+JOIN public.compra AS c
+    ON c.id_cliente = cl.id_cliente
+WHERE c.data_compra >= DATE '2025-01-01'
+GROUP BY cl.id_cliente, cl.nome
+ORDER BY total_gasto DESC, total_compras DESC, cl.id_cliente
+LIMIT 10;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 01 no Supabase](Prints/Relatorios/01-clientes-mais-gastaram.png).
+
+#### 7.2.2. Relatório 02 — Produtos mais vendidos
+
+Identificar os produtos com maior quantidade de unidades vendidas e a receita associada. São relacionadas `produto`, `item_compra` e `compra`, somando quantidades e multiplicando os preços históricos pelas unidades adquiridas. O resultado é ordenado por unidades vendidas.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    p.id_produto,
+    p.nome AS produto,
+    SUM(i.quantidade) AS unidades_vendidas,
+    SUM(i.quantidade * i.preco_unitario)::NUMERIC(12,2) AS receita_gerada
+FROM public.produto AS p
+JOIN public.item_compra AS i
+    ON i.id_produto = p.id_produto
+JOIN public.compra AS c
+    ON c.id_compra = i.id_compra
+WHERE c.data_compra >= DATE '2025-01-01'
+GROUP BY p.id_produto, p.nome
+ORDER BY unidades_vendidas DESC, receita_gerada DESC, p.id_produto
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 02 no Supabase](Prints/Relatorios/02-produtos-mais-vendidos.png).
+
+#### 7.2.3. Relatório 03 — Faturamento mensal
+
+Apurar, por mês, a quantidade de compras, o número de clientes distintos e o faturamento registrado a partir de janeiro de 2025. A associação entre `compra` e `cliente` possibilita calcular indicadores mensais por meio de `DATE_TRUNC`, `COUNT` e `SUM`.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    DATE_TRUNC('month', c.data_compra)::DATE AS mes,
+    COUNT(c.id_compra) AS quantidade_compras,
+    COUNT(DISTINCT cl.id_cliente) AS clientes_distintos,
+    SUM(c.valor_total)::NUMERIC(12,2) AS faturamento
+FROM public.compra AS c
+JOIN public.cliente AS cl
+    ON cl.id_cliente = c.id_cliente
+WHERE c.data_compra >= DATE '2025-01-01'
+GROUP BY DATE_TRUNC('month', c.data_compra)::DATE
+ORDER BY mes DESC;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 03 no Supabase](Prints/Relatorios/03-faturamento-mensal.png).
+
+#### 7.2.4. Relatório 04 — Compras de maior valor
+
+Relacionar as compras de valor igual ou superior a R$ 500,00 e identificar seus respectivos clientes. A consulta utiliza `compra` e `cliente`, apresentando data, identificação e valor total, com ordenação decrescente para evidenciar as compras mais altas.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    c.id_compra,
+    c.data_compra,
+    cl.id_cliente,
+    cl.nome AS cliente,
+    c.valor_total
+FROM public.compra AS c
+JOIN public.cliente AS cl
+    ON cl.id_cliente = c.id_cliente
+WHERE c.valor_total >= 500.00
+ORDER BY c.valor_total DESC, c.id_compra
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 04 no Supabase](Prints/Relatorios/04-maiores-compras.png).
+
+#### 7.2.5. Relatório 05 — Produtos com menor estoque
+
+Localizar produtos que possuem até 110 unidades disponíveis e identificar o funcionário responsável pelo cadastro. A associação entre `produto` e `funcionario` permite consultar o estoque atual juntamente com o responsável, em ordem crescente de quantidade.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    p.id_produto,
+    p.nome AS produto,
+    p.quantidade_estoque,
+    f.nome AS funcionario_responsavel
+FROM public.produto AS p
+JOIN public.funcionario AS f
+    ON f.id_funcionario = p.id_funcionario
+WHERE p.quantidade_estoque <= 110
+ORDER BY p.quantidade_estoque ASC, p.id_produto
+LIMIT 20;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 05 no Supabase](Prints/Relatorios/05-estoque-baixo.png).
+
+#### 7.2.6. Relatório 06 — Funcionários responsáveis por mais produtos
+
+Contabilizar os produtos cadastrados por funcionário contratado até 25 de novembro de 2026. A consulta relaciona `funcionario` e `produto` por `id_funcionario`, agrupa os registros e ordena a quantidade de cadastros, permitindo analisar a distribuição dessa responsabilidade.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    f.id_funcionario,
+    f.nome AS funcionario,
+    f.cargo,
+    COUNT(p.id_produto) AS produtos_cadastrados
+FROM public.funcionario AS f
+JOIN public.produto AS p
+    ON p.id_funcionario = f.id_funcionario
+WHERE f.data_contratacao <= DATE '2026-11-25'
+GROUP BY f.id_funcionario, f.nome, f.cargo
+ORDER BY produtos_cadastrados DESC, f.id_funcionario
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 06 no Supabase](Prints/Relatorios/06-funcionarios-produtos.png).
+
+#### 7.2.7. Relatório 07 — Clientes com múltiplos telefones
+
+Demonstrar a utilização do atributo multivalorado `telefone`. A consulta associa `cliente` a `telefone_cliente`, filtra clientes do estado de São Paulo e utiliza `HAVING` para manter apenas aqueles com mais de um número. `STRING_AGG` reúne os telefones associados a cada cliente.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    cl.id_cliente,
+    cl.nome AS cliente,
+    COUNT(t.telefone) AS telefones_cadastrados,
+    STRING_AGG(t.telefone, ' | ' ORDER BY t.telefone) AS telefones
+FROM public.cliente AS cl
+JOIN public.telefone_cliente AS t
+    ON t.id_cliente = cl.id_cliente
+WHERE cl.estado = 'SP'
+GROUP BY cl.id_cliente, cl.nome
+HAVING COUNT(t.telefone) > 1
+ORDER BY telefones_cadastrados DESC, cl.id_cliente
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 07 no Supabase](Prints/Relatorios/07-clientes-telefones.png).
+
+#### 7.2.8. Relatório 08 — Clientes com contas ativas
+
+Verificar quantas compras e qual valor acumulado estão associados aos clientes com conta de status `ativa`. São utilizadas `cliente`, `cliente_conta` e `compra`; o `LEFT JOIN` permite incluir clientes ativos sem compras, e `COALESCE` apresenta zero nesses casos.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    cl.id_cliente,
+    cl.nome AS cliente,
+    cc.status AS status_conta,
+    COUNT(c.id_compra) AS compras_realizadas,
+    COALESCE(SUM(c.valor_total), 0)::NUMERIC(12,2) AS total_gasto
+FROM public.cliente AS cl
+JOIN public.cliente_conta AS cc
+    ON cc.id_cliente = cl.id_cliente
+LEFT JOIN public.compra AS c
+    ON c.id_cliente = cl.id_cliente
+WHERE cc.status = 'ativa'
+GROUP BY cl.id_cliente, cl.nome, cc.status
+ORDER BY total_gasto DESC, cl.id_cliente
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 08 no Supabase](Prints/Relatorios/08-clientes-contas-ativas.png).
+
+#### 7.2.9. Relatório 09 — Comparação entre preço histórico e preço atual
+
+Identificar itens de compra cujo preço unitário registrado é menor do que o preço de venda atual do produto. A consulta relaciona `item_compra`, `compra` e `produto` e calcula a diferença unitária, demonstrando a importância de preservar o preço efetivamente praticado na venda.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    c.id_compra,
+    c.data_compra,
+    p.id_produto,
+    p.nome AS produto,
+    i.quantidade,
+    i.preco_unitario AS preco_na_compra,
+    p.preco_venda AS preco_atual,
+    (p.preco_venda - i.preco_unitario)::NUMERIC(10,2) AS diferenca_unitaria
+FROM public.item_compra AS i
+JOIN public.compra AS c
+    ON c.id_compra = i.id_compra
+JOIN public.produto AS p
+    ON p.id_produto = i.id_produto
+WHERE i.preco_unitario < p.preco_venda
+ORDER BY diferenca_unitaria DESC, c.id_compra
+LIMIT 15;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 09 no Supabase](Prints/Relatorios/09-precos-historicos.png).
+
+#### 7.2.10. Relatório 10 — Detalhamento das compras de 2026
+
+Listar itens de compras realizadas a partir de 1º de janeiro de 2026, incluindo data, cliente, produto, quantidade, preço unitário e subtotal. Os relacionamentos entre `compra`, `cliente`, `item_compra` e `produto` permitem reconstruir o conteúdo dos pedidos.
+
+**Consulta SQL:**
+
+```sql
+SELECT
+    c.id_compra,
+    c.data_compra,
+    cl.nome AS cliente,
+    p.nome AS produto,
+    i.quantidade,
+    i.preco_unitario,
+    (i.quantidade * i.preco_unitario)::NUMERIC(12,2) AS subtotal_item
+FROM public.compra AS c
+JOIN public.cliente AS cl
+    ON cl.id_cliente = c.id_cliente
+JOIN public.item_compra AS i
+    ON i.id_compra = c.id_compra
+JOIN public.produto AS p
+    ON p.id_produto = i.id_produto
+WHERE c.data_compra >= DATE '2026-01-01'
+ORDER BY c.data_compra DESC, c.id_compra, p.nome
+LIMIT 25;
+```
+
+**Evidência:** [Visualizar resultado do Relatório 10 no Supabase](Prints/Relatorios/10-detalhes-compras.png).
+
+### 7.3. Considerações sobre os relatórios
+
+Os relatórios demonstram a aplicação prática dos relacionamentos definidos nas etapas conceitual e lógica. A análise das vendas combina dados de clientes, compras, produtos e itens de compra, enquanto os relatórios de estoque e funcionários relacionam os produtos aos responsáveis por seu cadastro. As consultas referentes às contas e aos telefones também evidenciam a implementação das relações 1:1 e do atributo multivalorado.
+
+O histórico de preços é preservado pelo atributo `preco_unitario` em `item_compra`. Assim, as análises de receita utilizam os valores praticados nas compras, mesmo quando `produto.preco_venda` possui outro valor. Os resultados apresentados nas capturas correspondem ao conjunto fictício de dados utilizado para demonstração acadêmica; seus valores não representam operações comerciais reais.
+
+As dez consultas e os respectivos resultados estão documentados no repositório, permitindo consultar tanto a implementação SQL quanto as evidências obtidas no Supabase.
+
+[Consultar todas as imagens dos relatórios](Prints/Relatorios/) · [Consultar o script completo](sql/05_relatorios.sql)
