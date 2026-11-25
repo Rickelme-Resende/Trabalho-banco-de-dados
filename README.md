@@ -111,7 +111,7 @@ Por exemplo, se um produto estiver cadastrado com preço de venda de **R$ 200,00
 
 ![Modelo Lógico Relacional do e-commerce](Diagramas/Modelo_Logico.png)
 
-[Visualizar o modelo lógico em tamanho original](Diagramas/Modelo_Logico.png)
+[Visualizar o modelo lógico em tamanho original](Diagramas/Modelo_logico.png)
 
 O modelo lógico é formado por **sete tabelas**: `Cliente`, `Telefone_Cliente`, `Cliente_Conta`, `Funcionario`, `Produto`, `Compra` e `Item_Compra`. A tabela `Telefone_Cliente` resulta da conversão do atributo multivalorado `telefone`, presente no MER.
 
