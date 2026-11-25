@@ -109,7 +109,7 @@ Por exemplo, se um produto estiver cadastrado com preço de venda de **R$ 200,00
 
 ### 3.1. Diagrama do Modelo Lógico Relacional
 
-![Modelo Lógico Relacional do e-commerce](Diagramas/Modelo_Logico.png)
+![Modelo Lógico Relacional do e-commerce](Diagramas/Modelo_logico.png)
 
 [Visualizar o modelo lógico em tamanho original](Diagramas/Modelo_logico.png)
 
