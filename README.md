@@ -1,3 +1,6 @@
+# Modelagem de Banco de Dados — E-commerce de Eletrônicos
+
+
 **Projeto:** Sistema de gerenciamento de um e-commerce de produtos eletrônicos  
 
 Este documento descreve o cenário de negócio e o desenvolvimento de um banco de dados relacional para um e-commerce de eletrônicos, abrangendo a modelagem conceitual, lógica e física, a inserção de dados fictícios e a demonstração de operações CRUD. O projeto contempla clientes, contas, funcionários, produtos e compras, com atenção à integridade referencial e à preservação do histórico das vendas.
